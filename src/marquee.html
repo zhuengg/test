@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+    <style>
+      #mqc {
+        width: 400px;
+        height: 300px;
+        border: 1px solid;
+				box-sizing: border-box;
+      }
+      #mqc > span {
+        font-size: 24px;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="mqc"></div>
+
+    <script>
+      class BulletCell {
+				parent = null
+        width = 0
+        height = 0
+        top = 0
+        left = 0
+        startTime = 0
+        // speed = 0
+        duration = 0
+        text = ''
+
+        constructor(text, bulletTrack) {
+          this.text = text
+					this.parent = bulletTrack
+					this.left = this.parent.rect.left + this.parent.rect.width
+        }
+
+        start() {
+          const cellEl = this.el = document.createElement('span')
+          cellEl.innerHTML = this.text
+					cellEl.style.setProperty('display', 'inline-block')
+					// cellEl.
+        }
+      }
+      class BulletTrack {
+        parent = null
+        el = null
+				rect = null
+        isFree = true // 此轨道是否可新增弹幕，防重叠
+				bulletList = []
+
+        constructor(bulletBox) {
+          this.parent = bulletBox
+          const trackEl = (this.el = document.createElement('div'))
+					trackEl.style.setProperty('width', '100%')
+					trackEl.style.setProperty('height', '36px')
+          this.parent.el.append(trackEl)
+					// console.debug(trackEl, trackEl.getBoundingClientRect())
+					this.rect = trackEl.getBoundingClientRect()
+					window.addEventListener('resize', () => {
+						this.rect = trackEl.getBoundingClientRect()
+					})
+        }
+
+				appendBullet(bulletText) {
+					var bullet = new BulletCell(bulletText, this)
+					this.bulletList.push(bullet)
+					bullet.start()
+
+					// bulletCell.
+				}
+      }
+      class BulletBox {
+        el = null
+        rect = null
+        config = {
+					trackNum: 1,
+					fontSize: 24,
+					zIndex: 1
+				}
+        // 轨道
+        trackList = []
+        // 弹幕
+        bulletStash = []
+
+        constructor(htmlElement, options = {}) {
+          this.el = htmlElement
+          this.rect = htmlElement.getBoundingClientRect()
+          Object.assign(this.config, options)
+
+          for (let i=0; i < this.config.trackNum; i++) {
+            this.trackList.push(new BulletTrack(this))
+          }
+        }
+
+        appendBullet(text) {
+					let fTrack = this.checkFreeTrack()
+					fTrack ? fTrack.appendBullet(text) : this.bulletStash.push(text)
+				}
+
+				checkFreeTrack() {
+					let fTrack = null
+					for(let i=0; i < this.trackList.length; i++) {
+						if (this.trackList[i].isFree) {
+							fTrack = this.trackList[i]
+							break
+						}
+					}
+					return fTrack
+				}
+      }
+
+      const bBox = new BulletBox(document.querySelector('#mqc'))
+			bBox.appendBullet('666')
+    </script>
+  </body>
+</html>
