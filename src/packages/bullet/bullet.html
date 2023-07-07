@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Document</title>
+  <style>
+    .bulletBox {
+      width: 400px;
+      height: 300px;
+      background-color: #333;
+      position: relative;
+      
+    }
+    .actions {
+      margin-top: 12px;
+    }
+    .actions>* {
+      margin-top: 6px;
+    }
+    .bullet {
+      display: block;
+      position: absolute;
+      transition-property: left;
+      transition-timing-function: linear;
+      white-space: nowrap;
+      color: #C0C4CC;
+    }
+    label {
+      display: inline-block;
+      width: 80px;
+      margin-right: 8px;
+    }
+  </style>
+</head>
+<body>
+  <div class="bulletBox"></div>
+
+  <div class="actions">
+    <label for="bulletText">Text: </label><input id="bulletText" type="text" value="6666666666666666666"><br>
+    <label for="bulletSpeed">Duration: </label><input id="bulletSpeed" type="text" value="10">s<br>
+    <button id="btnSend">Send</button>
+  </div>
+  
+  <script>
+    var box = document.querySelector('.bulletBox'),
+      boxRect = box.getBoundingClientRect()
+    console.debug(box, boxRect)
+
+    function btnClick() {
+      let text = document.getElementById('bulletText').value
+      let duration = parseInt(document.getElementById('bulletSpeed').value)
+      // 创建弹幕，并初始化
+      let bulletEl = document.createElement('span')
+      bulletEl.className = 'bullet'
+      bulletEl.innerHTML = text
+      bulletEl.style.left = `${boxRect.width}px`
+      bulletEl.style.setProperty('transition-duration', `${duration}s`)
+      box.append(bulletEl)
+      const bulletRect = bulletEl.getBoundingClientRect()
+      console.debug(bulletEl, bulletRect)
+      // 开始移动，并在移动出显示区后删除弹幕
+      bulletEl.style.left = `-${bulletRect.width}px`
+      setTimeout(() => {
+        bulletEl.remove()
+        console.debug(bulletEl)
+        bulletEl = null
+      }, duration * 1000)
+    }
+    document.getElementById('btnSend').onclick = btnClick
+    
+  </script>
+</body>
+</html>
