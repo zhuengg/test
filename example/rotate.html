@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <style>
+        video, canvas.row {
+            width: 480px;
+            height: 270px;
+        }
+        canvas.col {
+            width: 270px;
+            height: 480px;
+        }
+    </style>
+</head>
+<body>
+    
+    <video id="sour" autoplay muted controls></video>
+    <canvas id="temp" class="row"></canvas>
+    <button onclick="capture()">Capture</button>
+    <br>
+    90
+    <canvas id="res-90" class="col"></canvas>
+    180
+    <canvas id="res-180" class="row"></canvas>
+    270
+    <canvas id="res-270" class="col"></canvas>
+
+    <script>
+        const elVideo = document.getElementById('sour')
+        const elCanvasTemp = document.getElementById('temp')
+        const elCanvasRes90 = document.getElementById('res-90')
+        const elCanvasRes180 = document.getElementById('res-180')
+        const elCanvasRes270 = document.getElementById('res-270')
+
+        // function videoFrameCallback(now, metadata) {
+        //     console.debug(now, metadata)
+        //     console.debug(elVideo.getVideoPlaybackQuality())
+        //     // elVideo.requestVideoFrameCallback(videoFrameCallback)
+        // }
+        // elVideo.requestVideoFrameCallback(videoFrameCallback)
+
+        elVideo.src = "./data/bbb_video_avc_frag.mp4"
+
+        function capture() {
+            const videoWidth = elVideo.videoWidth,
+                videoHeight = elVideo.videoHeight
+            elCanvasTemp.width = videoWidth
+            elCanvasTemp.height = videoHeight
+            const ctxTemp = elCanvasTemp.getContext('2d')
+            ctxTemp.drawImage(elVideo, 0, 0)
+            const imageDataTemp = ctxTemp.getImageData(0, 0, videoWidth, videoHeight)
+
+            elCanvasRes90.width = videoHeight
+            elCanvasRes90.height = videoWidth
+            const ctxRes90 = elCanvasRes90.getContext('2d')
+            console.time('transpose90')
+            const imageDataRes90 = transpose(imageDataTemp, 90)
+            console.timeEnd('transpose90')
+            ctxRes90.putImageData(imageDataRes90, 0, 0, 0, 0, elCanvasRes90.width, elCanvasRes90.height)
+
+            elCanvasRes180.width = videoWidth
+            elCanvasRes180.height = videoHeight
+            const ctxRes180 = elCanvasRes180.getContext('2d')
+            console.time('transpose180')
+            const imageDataRes180 = transpose(imageDataTemp, 180)
+            console.timeEnd('transpose180')
+            ctxRes180.putImageData(imageDataRes180, 0, 0, 0, 0, elCanvasRes180.width, elCanvasRes180.height)
+
+            elCanvasRes270.width = videoHeight
+            elCanvasRes270.height = videoWidth
+            const ctxRes270 = elCanvasRes270.getContext('2d')
+            console.time('transpose270')
+            const imageDataRes270 = transpose(imageDataTemp, 270)
+            console.timeEnd('transpose270')
+            ctxRes270.putImageData(imageDataRes270, 0, 0, 0, 0, elCanvasRes270.width, elCanvasRes270.height)
+        }
+
+        function transpose(imageData, deg) {
+            const { width, height, data } = imageData,
+                direction = deg % 180 === 0 ? 0 : 1,
+                tWidth = direction === 0 ? width : height,
+                tHeight = direction === 0 ? height : width
+
+            var rgbaData = lineToMatrix(data.slice(), 4)
+            var matrix = lineToMatrix(rgbaData, width)
+            var matrixAT = matrix.slice()
+            if (deg / 180 >= 1) {
+                matrixAT = matrixAT.map(item => {
+                    return item.slice().reverse()
+                })
+            }
+            if (deg / 180 <= 1) {
+                matrixAT.reverse()
+            }
+            matrixAT = matrixToLine(matrixAT, width, direction)
+
+            var tData = new ImageData(tWidth, tHeight)
+            for (let i = 0; i < tData.data.length; i++) {
+                let row = Math.floor(i / 4),
+                    col = i % 4
+                    tData.data[i] = matrixAT[row][col]
+            }
+            return tData
+        }
+        
+
+        function lineToMatrix(line, eLen) {
+            var matrix = []
+            for (let i = 0, k = -1; i < line.length; i++) {
+                if (i % eLen === 0) {
+                    k++
+                    matrix[k] = []
+                }
+                matrix[k].push(line[i])
+            }
+            return matrix
+        }
+
+        /**
+         * matrix: 矩阵数组
+         * w: 元素长度
+         * direction: 0-横，1-竖
+         */
+        function matrixToLine(matrix, w, direction) {
+            var line = new Array(matrix.length * w)
+            if (direction === 0) {
+                for (let i = 0; i < line.length; i++) {
+                    let row = Math.floor(i / w),
+                        col = i % w
+                    line[i] = matrix[row][col]
+                }
+            } else {
+                for (let i = 0; i < line.length; i++) {
+                    let col = Math.floor(i / matrix.length),
+                        row = i % matrix.length
+                    line[i] = matrix[row][col]
+                }
+            }
+            return line
+        }
+
+        
+        // function rotate(arr, w, h, deg) {
+        //     console.time('toMatrix')
+        //     var matrix = lineToMatrix(arr, w)
+        //     console.timeEnd('toMatrix')
+        //     console.debug('matrix', matrix)
+            
+        //     var rev = matrix.slice()
+        //     console.time('reverse')
+        //     if (deg / 180 >= 1) {
+        //         rev = rev.map(item => {
+        //             return item.slice().reverse()
+        //         })
+        //     }
+        //     if (deg / 180 <= 1) {
+        //         rev.reverse()
+        //     }
+        //     console.timeEnd('reverse')
+        //     console.debug('reverse', rev)
+
+        //     console.time('res')
+        //     var res = matrixToLine(rev, w, deg % 180 === 0 ? 0 : 1)
+        //     console.timeEnd('res')
+        //     console.debug('res', res)
+        //     return res
+        // }
+        // let w = 4, h = 3
+        // var arr = []
+        // for (let i = 0; i < w*h; i++) {
+        //     arr.push(i+1)
+        // }
+        // rotate(arr, w, h, 90)
+        // rotate(arr, w, h, 180)
+        // rotate(arr, w, h, 270)
+
+    </script>
+    
+</body>
+</html>

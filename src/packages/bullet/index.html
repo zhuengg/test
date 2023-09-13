@@ -14,12 +14,14 @@
   </style>
 </head>
 <body>
-  <div id="video"></div>
+  <div id="video-box">
+    <video src="../../../data/bbb_video_avc_frag.mp4" width="400" height="300" autoplay></video>
+  </div>
   <!-- <script type="module" src="./bullet.js"></script> -->
   <script type="module">
     // console.debug()
     import { createBullet } from './bullet.js'
-    var bulletIns = createBullet(document.querySelector('#video'), {})
+    var bulletIns = createBullet(document.querySelector('#video-box'), {})
     console.debug(createBullet, bulletIns)
 
   </script>

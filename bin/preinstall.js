@@ -9,7 +9,7 @@ async function copyLib () {
       {
         type: 'confirm',
         name: 'dependInstall',
-        message: chalk.blue('使用h5player需要安装依赖解码库到静态文件目录，是否安装？')
+        message: chalk.blue('拷贝依赖库静态文件，是否继续？')
       }
     ])
   

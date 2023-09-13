@@ -12,4 +12,4 @@ if (!isExist) {
   shell.mkdir('-p', targetPath)
 }
 shell.cp('-r', path.resolve(__dirname, '../dist/lib/*'), targetPath)
-console.log(chalk.green('-->H5player depended library was installed to '), decodeLibPath)
+console.log(chalk.green('-->Depended library was installed to '), decodeLibPath)

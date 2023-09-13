@@ -8,4 +8,4 @@ const decodeLibPath = fileContent.match(/decodeLibPath=[a-zA-Z0-9-\/\.]+/g).shif
 const targetPath = path.resolve(__dirname, `../../../../${/^\//.test(decodeLibPath) ? decodeLibPath.slice(1) : decodeLibPath}`)
 
 shell.rm('-rf', targetPath)
-console.log(chalk.green('-->H5player depended library was uninstalled'))
+console.log(chalk.green('-->Depended library was uninstalled'))

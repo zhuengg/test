@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+        }
+        div {
+            padding: 10px 40px;
+        }
+        input,
+        button {
+            font-size: 16px;
+        }
+        button {
+            padding: 2px 8px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div>
+        <canvas id="watermark"></canvas>
+    </div>
+    <div>
+        <input id="deg" type="number" step="5" value="0" onchange="draw()" style="width: 100px;">
+        <button onclick="draw()">Draw</button>
+        <button onclick="cleanCanvas()">Clear</button>
+    </div>
+    <div>
+        <button onclick="watermarkV3(elCanvas, defaultConfig)">Watermark</button>
+    </div>
+
+    <script>
+        const elCanvas = document.getElementById('watermark')
+        elCanvas.width = 1366
+        elCanvas.height = 768
+        elCanvas.style.setProperty('background-color', '#333')
+        // elCanvas.getContext('2d').translate(684, 384)
+
+        function draw() {
+            const degValue = parseInt(document.getElementById('deg').value)
+            const deg = degValue % 180 === 0 ? (degValue === 0 ? 0 : 180) : degValue % 180
+
+            const ctx = elCanvas.getContext('2d')
+            ctx.textAlign = 'left'
+            ctx.textBaseline = 'hanging'
+            ctx.font = '36px 微软雅黑'
+            ctx.save()
+
+            const text = 'watermarkkkkkkkkkkkkkkkkkkkkkkkkkkkk'
+            const textColor = 'rgba(255, 255, 255, .8)'
+            const rectColor = 'rgba(255, 0, 0, .5)'
+            const ms = ctx.measureText(text),
+                textWidth = ms.width,
+                textHeight = ms.fontBoundingBoxDescent
+
+            let offsetX = 0, offsetY = 0
+            if (deg < 0) {
+                offsetY = -textWidth * Math.sin((deg * Math.PI) / 180)
+            } else {
+                offsetX = textHeight * Math.sin((deg * Math.PI) / 180)
+            }
+            if (Math.abs(deg) > 90) {
+                offsetX += -textWidth * Math.cos((deg * Math.PI) / 180)
+                offsetY += -textHeight * Math.cos((deg * Math.PI) / 180)
+            }
+            console.debug(deg, offsetX, offsetY)
+            if (Math.abs(offsetX) > elCanvas.width || Math.abs(offsetY) > elCanvas.height) {
+                throw new Error('Watermark content out view.')
+            }
+
+            ctx.translate(offsetX, offsetY)
+            ctx.rotate((deg * Math.PI) / 180)
+
+            ctx.fillStyle = rectColor
+            ctx.fillRect(0, 0, textWidth, textHeight)
+
+            ctx.fillStyle = textColor
+            ctx.fillText(text, 0, 0)
+            ctx.restore()
+        }
+
+        function cleanCanvas() {
+            document.getElementById('deg').value = 0
+            elCanvas.getContext('2d').clearRect(0, 0, elCanvas.width, elCanvas.height)
+        }
+
+        function watermark(canvasElement, text, config = {}) {
+            const defaultConfig = {
+                color: '#ccc',
+                rotateDegree: -22.5,
+                fontSize: 16, // px
+                fontFamily: '微软雅黑',
+                // space: 240,
+                space: window.screen.width / 8
+            }
+
+            Object.assign(defaultConfig, config)
+            const { color, rotateDegree, fontSize, fontFamily, space } = defaultConfig
+
+            const ctx = canvasElement.getContext('2d')
+            ctx.save() // 记录坐标系原始状态，方便后续重置
+            console.debug(ctx)
+            ctx.font = `${fontSize}px ${fontFamily}`
+            ctx.fillStyle = '#ccc'
+            ctx.textAlign = 'left'
+            ctx.textBaseline = 'hanging'
+
+            const textWidth = Math.ceil(ctx.measureText(text).width)
+            const cellWidth = textWidth + space
+            const deg = rotateDegree * Math.PI / 180
+            const xTimes = Math.ceil(canvasElement.width / cellWidth) + 1,
+                yTimes = 3 * Math.ceil(canvasElement.height / cellWidth) - 2
+            const xOffset = cellWidth,
+                yOffset = cellWidth / 2
+            // console.debug(textWidth, cellWidth, deg, xTimes, yTimes)
+
+            ctx.translate(0, textWidth * Math.tan(-deg)) // 整体向下平移，防止第一行被遮挡
+            for (let j = 0; j < xTimes; j++) {
+                for (let i = 0; i < yTimes; i++) {
+                    i > 0 && ctx.translate(0, yOffset)
+                    i % 2 === 1 && ctx.translate(yOffset, 0) // 偶数行错开
+                    ctx.rotate(deg)
+                    ctx.fillText(text, 0, 0)
+                    // 归位
+                    ctx.rotate(-deg)
+                    i % 2 === 1 && ctx.translate(-yOffset, 0)
+                }
+                ctx.translate(xOffset, -((yTimes - 1) * yOffset))
+            }
+            ctx.restore() // 重置坐标系至初始状态，防止影响外部使用
+        }
+        watermark(elCanvas, 'watermarkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk')
+        
+        const defaultConfig = {
+            text: 'Watermark\r\n127.0.0.1\r\nAdministrator',
+            color: 'rgba(255, 255, 255, 0.5)',
+            font: '16px 微软雅黑',
+            rotateDegree: -15,
+            space: window.screen.width / 6,
+            textAlign: 'center'
+        }
+
+        /* 
+            1. 内容溢出检查
+            2. 防重叠
+        */
+        function watermarkV2(canvasElement, options = {}) {
+            const cfg = Object.assign({}, defaultConfig, options)
+            let { text, color, font, rotateDegree, space } = cfg
+            if (!space) {
+                space = canvasElement.width / 4
+            }
+            // 转成-180~180区间的度数
+            let degTemp = rotateDegree % 360
+            let deg
+            if (degTemp % 180 === 0 && degTemp / 180 !== 0) {
+                deg = degTemp / 180 > 0 ? 180 : -180
+            } else {
+                deg = degTemp % 180
+            }
+            if (Math.abs(degTemp) > 180) {
+                deg = -deg
+            }
+
+            const ctx = canvasElement.getContext('2d')
+            ctx.fillStyle = color
+            ctx.font = font
+            ctx.textAlign = 'left'
+            ctx.textBaseline = 'hanging'
+            ctx.save() // 记录坐标系原始状态，方便后续重置
+            const textWidth = Math.ceil(ctx.measureText(text).width),
+                textHeight = Math.ceil(ctx.measureText(text).fontBoundingBoxDescent)
+
+            const degSin = deg % 180 === 0 ? 0
+                : deg % 90 === 0 ? deg / 90 : Math.sin(deg * Math.PI / 180),
+                degCos = deg % 180 === 0 ? 1
+                    : deg % 90 === 0 ? 0 : Math.cos(deg * Math.PI / 180)
+            // debugger
+            let transX = 0, transY = 0
+            if (deg > 0) {
+                transX = textHeight * degSin
+            } else {
+                transY = -textWidth * degSin
+            }
+            if (Math.abs(deg) > 90) {
+                transX += -textWidth * degCos
+                transY += -textHeight * degCos
+            }
+            transX = Math.ceil(transX)
+            transY = Math.ceil(transY)
+            ctx.translate(transX, transY) // 整体平移，防止被遮挡
+            if (transX > canvasElement.width || transY > canvasElement.height) {
+                throw new Error('Watermark content out the view, please set a suitable watermark config.')
+            }
+
+            const cellWidth = Math.ceil(degCos === 0 ? textHeight : Math.abs((textWidth + textHeight) * degCos)),
+                cellHeight = Math.ceil(degSin === 0 ? textWidth : Math.abs((textWidth + textHeight) * degSin)),
+                max = Math.max(cellWidth, cellHeight)
+            const offsetX = cellWidth + (space > max ? space : max),    // space > max ? space : max 为了防止重叠
+                offsetY = cellHeight + (space > max ? space : max)
+            const timesX = Math.ceil(canvasElement.width / offsetX),  // 绘制列数
+                timesY = 3 * Math.ceil(canvasElement.height / offsetY) - 1    // 绘制行数
+
+            console.debug('textWidth/Height', textWidth, textHeight,
+                'transX/Y', transX, transY,
+                'cellWidth/Height', cellWidth, cellHeight,
+                'offsetX/Y', offsetX, offsetY,
+                'timesX/Y', timesX, timesY)
+
+            for (let j = 0; j < timesX; j++) {
+                j > 0 && ctx.translate(offsetX, 0)
+                for (let i = 0; i < timesY; i++) {
+                    i > 0 && ctx.translate(0, offsetY / 2)
+                    i % 2 === 1 && ctx.translate(offsetX / 2, 0) // 偶数行错开
+                    ctx.rotate(deg * Math.PI / 180)
+                    ctx.fillText(text, 0, 0)
+                    // 归位
+                    ctx.rotate(-deg * Math.PI / 180)
+                    i % 2 === 1 && ctx.translate(-offsetX / 2, 0)
+                }
+                ctx.translate(0, -((timesY - 1) * offsetY / 2))
+                // ctx.translate(offsetX, -((timesY - 1) * offsetY))
+            }
+            ctx.restore() // 重置坐标系至初始状态，防止影响外部使用
+        }
+
+        /* 
+            1.可换行
+            2.textAlign可配
+        */
+        function watermarkV3 (canvasElement, options = {}) {
+            const cfg = Object.assign({}, defaultConfig, options)
+            let { text, color, font, rotateDegree, space, textAlign } = cfg
+            
+            const ctx = canvasElement.getContext('2d')
+            ctx.fillStyle = color
+            ctx.font = font
+            ctx.textAlign = textAlign
+            ctx.textBaseline = 'hanging'
+            ctx.save() // 记录坐标系原始状态，方便后续重置
+
+            if (!space) {
+                space = canvasElement.width / 4
+            }
+            // 转成-180~180区间的度数
+            let degTemp = rotateDegree % 360
+            let deg
+            if (degTemp % 180 === 0 && degTemp / 180 !== 0) {
+                deg = degTemp / 180 > 0 ? 180 : -180
+            } else {
+                deg = degTemp % 180
+            }
+            if (Math.abs(degTemp) > 180) {
+                deg = -deg
+            }
+            let textArr
+            if (text.includes('\r\n')) {
+                textArr = text.split(/\r|\n/g).filter(txt => /\S/.test(txt))
+            }
+            // const textWidth = Math.ceil(ctx.measureText(text).width),
+            //     textHeight = Math.ceil(ctx.measureText(text).fontBoundingBoxDescent)
+            const fontHeight = Math.ceil(ctx.measureText(text).fontBoundingBoxDescent)
+            let textWidth = 0, textHeight = 0
+            if (textArr && textArr.length > 0) {
+                textWidth = Math.max(...textArr.map(txt => ctx.measureText(txt).width))
+                textHeight = fontHeight * textArr.length
+            } else {
+                textWidth = Math.ceil(ctx.measureText(text).width),
+                textHeight = fontHeight
+            }
+
+            const degSin = deg % 180 === 0 ? 0
+                : deg % 90 === 0 ? deg / 90 : Math.sin(deg * Math.PI / 180),
+                degCos = deg % 180 === 0 ? 1
+                    : deg % 90 === 0 ? 0 : Math.cos(deg * Math.PI / 180)
+            // debugger
+            let transX = 0, transY = 0
+            if (deg > 0) {
+                transX = textHeight * degSin
+            } else {
+                transY = -textWidth * degSin
+            }
+            if (Math.abs(deg) > 90) {
+                transX += -textWidth * degCos
+                transY += -textHeight * degCos
+            }
+            transX = Math.ceil(transX)
+            transY = Math.ceil(transY)
+            ctx.translate(transX, transY) // 整体平移，防止被遮挡
+            if (transX > canvasElement.width || transY > canvasElement.height) {
+                throw new Error('Watermark content out the view, please set a suitable watermark config.')
+            }
+
+            const cellWidth = Math.ceil(degCos === 0 ? textHeight : Math.abs((textWidth + textHeight) * degCos)),
+                cellHeight = Math.ceil(degSin === 0 ? textWidth : Math.abs((textWidth + textHeight) * degSin)),
+                max = Math.max(cellWidth, cellHeight)
+            const offsetX = cellWidth + (space > max ? space : max),    // space > max ? space : max 为了防止重叠
+                offsetY = cellHeight + (space > max ? space : max)
+            const timesX = Math.ceil(canvasElement.width / offsetX),  // 绘制列数
+                timesY = 3 * Math.ceil(canvasElement.height / offsetY) - 1    // 绘制行数
+
+            console.debug('textWidth/Height', textWidth, textHeight,
+                'transX/Y', transX, transY,
+                'cellWidth/Height', cellWidth, cellHeight,
+                'offsetX/Y', offsetX, offsetY,
+                'timesX/Y', timesX, timesY)
+
+            for (let j = 0; j < timesX; j++) {
+                j > 0 && ctx.translate(offsetX, 0)
+                for (let i = 0; i < timesY; i++) {
+                    i > 0 && ctx.translate(0, offsetY / 2)
+                    i % 2 === 1 && ctx.translate(offsetX / 2, 0) // 偶数行错开
+                    ctx.rotate(deg * Math.PI / 180)
+                    ctx.fillStyle = color
+                    let fx = ctx.textAlign === 'center' ? textWidth / 2
+                        : ctx.textAlign === 'right' || ctx.textAlign === 'end' ? textWidth
+                        : 0
+                    if (textArr && textArr.length > 0) {
+                        textArr.forEach((txt, tIndex) => {
+                            ctx.fillText(txt, fx, tIndex * fontHeight)
+                        })
+                    } else {
+                        ctx.fillText(text, fx, 0)
+                    }
+                    // ctx.fillStyle = 'rgba(255, 0, 0, .2)' 
+                    // ctx.fillRect(0, 0, textWidth, textHeight)
+                    // 归位
+                    ctx.rotate(-deg * Math.PI / 180)
+                    i % 2 === 1 && ctx.translate(-offsetX / 2, 0)
+                }
+                ctx.translate(0, -((timesY - 1) * offsetY / 2))
+                // ctx.translate(offsetX, -((timesY - 1) * offsetY))
+            }
+            ctx.restore() // 重置坐标系至初始状态，防止影响外部使用
+        }
+
+    </script>
+</body>
+
+</html>
